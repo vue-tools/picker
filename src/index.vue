@@ -1,14 +1,20 @@
 <style scoped>
     .pkWarp {
         width: 100%;
-        height: calc(100% + 9rem);
+        height: 100%;
         background: black;
         position: fixed;
         top: 0;
         left: 0;
-        opacity: 0;
         overflow: hidden;
         z-index: 10;
+        opacity: 0;
+        transition-property: opacity;
+        transition-duration: 0.5s;
+    }
+
+    .pkWarp--active {
+        opacity: 0.5;
     }
 
     .pk {
@@ -17,37 +23,37 @@
         position: absolute;
         bottom: 0;
         z-index: 100;
+        opacity: 1;
 
+        background: #ffffff;
     }
 
-    .pk--show {
-        animation: moveTop 0.5s ease-in;
+    .pkWarp .pk {
+        animation: moveBottom 0.5s ease-out;
         animation-fill-mode: forwards;
     }
 
-    .pk--hide {
-        animation: moveBottom 0.5s ease-out;
+    .pkWarp.pkWarp--active .pk {
+        animation: moveTop 0.5s ease-in;
         animation-fill-mode: forwards;
     }
 
     @keyframes moveTop {
         from {
-            transform: translate(0, 0);
-            opacity: 0;
+            transform: translate(0, 9rem);
         }
         to {
-            transform: translate(0, -9rem);
-            opacity: 0.5;
+            transform: translate(0, 0rem);
         }
     }
 
     @keyframes moveBottom {
         from {
-            transform: translate(0, -8rem);
+            transform: translate(0, 0rem);
             opacity: 0.5;
         }
         to {
-            transform: translate(0, 0);
+            transform: translate(0, 9rem);
             opacity: 0;
         }
     }
@@ -74,7 +80,7 @@
         border: 1px solid #00a0e2; /*no*/
     }
 
-    .pk__button--datetime {
+    .pk__button--tabs {
         height: 0.8rem;
         color: #000;
         border-radius: 0.2rem;
@@ -83,7 +89,7 @@
 
     }
 
-    .pk__button--datetime span {
+    .pk__button--tabs span {
         display: inline-block;
         height: 0.8rem;
         font-size: 0.3rem;
@@ -93,19 +99,20 @@
 
     }
 
-    .pk__button--datetime span.active {
+    .pk__button--tabs span.active {
         background: blue;
         color: #fff;
     }
 
     .pk__body-warp {
         height: 7.8rem;
-        width: 20rem;
+        width: 10rem;
         transition: transform 0.2s ease-out;
+        position: relative;
     }
 
     .pk__body-header {
-        width: 100%;
+        width: 10rem;
         height: 0.8rem;
         display: flex;
         justify-content: space-between;
@@ -113,6 +120,7 @@
         line-height: 0.8rem;
         color: blue;
         background: #ebebeb;;
+        float: left;
     }
 
     .pk__body-header div {
@@ -121,13 +129,13 @@
     }
 
     .pk__body {
-        width: 100%;
+        width: 10rem;
         height: 7rem;
         background: #ffffff;
         overflow: hidden;
-        position: relative;
         display: flex;
         justify-content: space-between;
+        float: left;
     }
 
     .pk__body-block {
@@ -146,10 +154,13 @@
     .pk__item {
         width: 100%;
         height: 1rem;
-        text-align: center;
-        line-height: 1rem;
-        font-size: 0.6rem;
+        line-height: 0.5rem;
+        font-size: 0.4rem;
         color: #000;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
     }
 
     .pk__mask {
@@ -161,7 +172,7 @@
     }
 
     .pk__mask--top {
-        top: 0rem;
+        top: 0.8rem;
         border-bottom: 1px solid #4c4c4c; /*no*/
         background: linear-gradient(to bottom, #FFF, rgba(255, 255, 255, 0));
     }
@@ -174,60 +185,38 @@
 </style>
 <template>
     <div>
-        <input type="text" readonly="readonly" :value="value" @click="showPanel()">
-        <div class="pkWarp" v-show="vo.show" ref="pk" @click="hidePanel($event)" @touchmove.prevent="">
+        <div @click.stop="showPanel()">
+            <slot></slot>
+        </div>
+        <div class="pkWarp" v-show="vo.show" ref="pk" @click="hidePanel($event)"
+             @touchmove.prevent="">
             <div class="pk">
                 <div class="pk__header">
                     <button @click="hidePanel()">取消</button>
-                    <div class="pk__button--datetime">
-                        <span :class="{'active':vo.tabIndex==0}" @touchstart="changeTab(0)">日期</span>
-                        <span :class="{'active':vo.tabIndex==1}" @touchstart="changeTab(1)">时间</span>
+                    <div class="pk__button--tabs" v-if="tabLayout.length>1">
+                        <span v-for="(count,tabIndex) in tabLayout" :class="{'active':vo.tabIndex==tabIndex}"
+                              @touchstart="changeTab(tabIndex)">第{{tabIndex+1}}页</span>
                     </div>
-
                     <button @click="submit">确定</button>
                 </div>
-                <div v-move="move" class="pk__body-warp" :style="{transform: vo.domStyle.body}">
-                    <div class="pk__body-header">
-                        <div>年</div>
-                        <div>月</div>
-                        <div>日</div>
+                <div v-move="move" class="pk__body-warp" ref="body" :style="{transform: vo.domStyle.body}">
+                    <div class="pk__mask pk__mask--top"></div>
+                    <div class="pk__mask pk__mask--bottom"></div>
 
-                        <div>时</div>
-                        <div>份</div>
-                        <div>秒</div>
-
+                    <div class="pk__body-header" v-for="(count,tabIndex) in tabLayout">
+                        <div v-if="canRender(count,tabIndex,index)" v-for="(val, key, index) in vo.data">
+                            <span v-if="header[index]">{{header[index]}}</span>
+                            <span v-else>{{key}}</span>
+                        </div>
                     </div>
-                    <div class="pk__body" ref="body">
-                        <div class="pk__mask pk__mask--top"></div>
-                        <div class="pk__mask pk__mask--bottom"></div>
-                        <div class="pk__body-block" v-show="vo.show.year">
-                            <ul class="pk__item-warp" ref="year" :style="{transform: vo.domStyle.year}">
-                                <li class="pk__item" v-for="year in vo.yearArray">{{year}}</li>
-                            </ul>
-                        </div>
-                        <div class="pk__body-block">
-                            <ul class="pk__item-warp" ref="month" :style="{transform: vo.domStyle.month}">
-                                <li class="pk__item" v-for="month in vo.monthArray">{{month}}</li>
-                            </ul>
-                        </div>
-                        <div class="pk__body-block">
-                            <ul class="pk__item-warp" ref="day" :style="{transform: vo.domStyle.day}">
-                                <li class="pk__item" v-for="day in vo.dayArray">{{day}}</li>
-                            </ul>
-                        </div>
-                        <div class="pk__body-block">
-                            <ul class="pk__item-warp" ref="hours" :style="{transform: vo.domStyle.hours}">
-                                <li class="pk__item" v-for="hours in vo.hoursArray">{{hours}}</li>
-                            </ul>
-                        </div>
-                        <div class="pk__body-block">
-                            <ul class="pk__item-warp" ref="minutes" :style="{transform: vo.domStyle.minutes}">
-                                <li class="pk__item" v-for="minutes in vo.minutesArray">{{minutes}}</li>
-                            </ul>
-                        </div>
-                        <div class="pk__body-block">
-                            <ul class="pk__item-warp" ref="seconds" :style="{transform: vo.domStyle.seconds}">
-                                <li class="pk__item" v-for="seconds in vo.secondsArray">{{seconds}}</li>
+
+                    <div class="pk__body" v-for="(count,tabIndex) in tabLayout" :tabIndex="tabIndex">
+                        <div class="pk__body-block" v-if="canRender(count,tabIndex,index)"
+                             :type="key" v-for="(items, key, index) in vo.data">
+                            <ul class="pk__item-warp" :ref="key" :style="{transform: vo.domStyle[key]}">
+                                <li class="pk__item" v-for="item in items">
+                                    {{typeof item=='object'?item[textField]:item}}
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -238,269 +227,255 @@
 </template>
 <script>
     import Vue from 'vue'
-    import move from './directive/move'
-    Vue.directive("move", move)
+    import moveDirective from './directive'
+    Vue.directive("move", moveDirective)
     export default {
         data: function () {
             return {
                 po: {
-                    year: 0,
-                    month: 0,
-                    day: 0,
-                    hours: 0,
-                    minutes: 0,
-                    seconds: 0,
+                    itemIndexs: {},
                 },
                 vo: {
                     phoneWidth: 375,
                     show: false,
                     tabIndex: 0,
-                    yearArray: [],
-                    monthArray: [],
-                    dayArray: [],
-                    hoursArray: [],
-                    minutesArray: [],
-                    secondsArray: [],
                     domStyle: {
-                        "year": 'translate3d(0px, 3rem, 0px)',
-                        "month": 'translate3d(0px, 3rem, 0px)',
-                        "day": 'translate3d(0px, 3rem, 0px)',
-                        "hours": 'translate3d(0px, 3rem, 0px)',
-                        "minutes": 'translate3d(0px, 3rem, 0px)',
-                        "seconds": 'translate3d(0px, 3rem, 0px)',
                         "body": 'translate3d(0rem, 0, 0px)',
                     },
-                    show: {
-                        "year": false,
-                        "month": false,
-                        "day": false,
-                        "hours": false,
-                        "minutes": false,
-                        "seconds": false
-                    }
+                    data: {}
                 }
             }
         },
         props: {
-            "value": {
-                type: [Number, String, Object],
+            valueField: {  //每一项的value字段
+                type: String,
+                default: 'id'
+            },
+            textField: { //每一项的文本字段
+                type: String,
+                default: 'text'
+            },
+            header: {//标题的数组
+                type: Array,
                 default: function () {
-                    new Date()
-                },
-                validator: function (value) {
-                    if (typeof value === "number") {
-                        return true
-                    } else if (typeof value === "object" && value instanceof Date) {
-                        return true
-                    } else if (typeof value === "string") {
-                        var reg = /^[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])\s+(20|21|22|23|[0-1]\d):[0-5]\d:[0-5]\d$/;
-                        if (!reg.test(value)) {
-                            console.error("时间格式不正确,正确格式为: 2014-01-01 12:00:00 ");
-                            return false
-                        }
-                        return true
-                    }
+                    return []
                 }
             },
-            type: {
-                type: String,
-                default: 'yyyy-MM-dd hh:mm:ss',
-                validator: function (value) {
-                    return true
+            changeAfterToTop: {//改变某一列的选择项后 是否选中第一项
+                type: Boolean,
+                default: true
+            },
+            changeEventAll: {//改变某一列的选择项后 是否触发后续列的选择项改变事件
+                type: Boolean,
+                default: true
+            },
+            data: [Array, Object],//数据
+            tabLayout: {//页面的布局每一页有几列
+                type: Array,
+                default: function () {
+                    let count = 0 //总条数
+                    let tabCount = 3//每页显示几列
+                    for (let k in this.data) {
+                        count++
+                    }
+                    let arr = []
+                    let pages = Math.ceil(count / tabCount)//总共几页
+                    for (let i = 0; i < pages; i++) {
+                        arr.push(tabCount)
+                    }
+                    if (count % tabCount > 0) {
+                        arr.splice(pages.length - 1, 1, count % tabCount)
+                    }
+                    return arr
                 }
-            }
+            },
+            selectIndexs: {//每一列选中的项，可以是索引或者是选中的数据
+                type: Array,
+                default: function () {
+                    return []
+                }
+            },
         },
-        computed: {
-            datetime: function () {
-                let value = `${this.po.year}-${this.po.month}-${this.po.day} ${this.po.hours}:${this.po.minutes}:${this.po.seconds}`
-                this.$emit('input', value)
-                return value
-            }
-        },
+        computed: {},
         methods: {
+            /*
+             * 是否可以渲染该列，用来分第几页
+             * */
+            canRender(count, tabIndex, index){
+                let max = 0, min = 0;
+                for (let i = 0; i <= tabIndex; i++) {
+                    if (i < tabIndex) {
+                        min += this.tabLayout[i]
+                    }
+                    max += this.tabLayout[i]
+                }
+                let result = min <= index && index < max
+                return result
+            },
+
+            /*
+             * 显示面板
+             * */
             showPanel()
             {
-                this.setDateTime()
                 this.vo.show = true
-                this.$refs.pk.classList.add("pk--show")
-            }
-            ,
+                this.$nextTick(()=> {
+                    this.$refs.pk.classList.add("pkWarp--active")
+                })
+            },
+            /*
+             * 隐藏面板
+             * */
             hidePanel(e)
             {
-                if (e) {
-                    if (e.target.className.indexOf("pkWarp") == -1) {
-                        return
-                    }
+                if (e && e.target.className.indexOf("pkWarp") == -1) {
+                    return
                 }
                 let list = this.$refs.pk.classList
-                list.remove("pk--show")
-                list.add("pk--hide")
+                list.remove("pkWarp--active")
                 setTimeout(()=> {
                     this.vo.show = false
-                    list.remove("pk--hide")
-                }, 500)
+                }, 200)
             },
+            /*
+             * 改变面板时候的操作
+             * */
             changeTab(index)
             {
                 let x = index * 10 * -1
                 this.vo.domStyle.body = `translate3d(${x}rem, 0px, 0px)`
                 this.vo.tabIndex = index
             },
+            /*
+             * 手指移动
+             * */
             move(e)
             {
-                if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {
+                if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {//判断是否是X轴滑动
                     return
                 }
-                let type = ''
-                let blockWidth = this.vo.phoneWidth / 3
 
-                if (e.beginPos.x < blockWidth) {
-                    type = this.vo.tabIndex == 0 ? "year" : "hours"
-                } else if (e.beginPos.x < blockWidth * 2) {
-                    type = this.vo.tabIndex == 0 ? "month" : "minutes"
-                } else {
-                    type = this.vo.tabIndex == 0 ? "day" : "seconds"
-                }
-                this.changeItem(e, type)
-            }
-            ,
+                let items = this.$refs.body.querySelector(`div[tabindex="${this.vo.tabIndex}"]`).querySelectorAll('.pk__body-block')//获取当前面板的可滑动列
 
+                let blockWidth = this.vo.phoneWidth / items.length  //获取每列的宽度
+
+                let index = Math.floor(e.beginPos.x / blockWidth)//获取当前操作是在第几列
+
+                let key = items[index].getAttribute('type')//获取当前滑动列的Key
+
+                this.changeItem(e, key)
+            },
+            /*
+             * 某一项按Y轴滚动的处理
+             * */
             changeItem(e, type) {
-                if (!type) {
+                if (!type || this.vo.data[type].length == 0) {
                     return
                 }
-                let index = 0
-                let el = this.$refs[type];
+                let index = 0//当前滑动列选择的选项的索引
+                let el = this.$refs[type][0];//当前滑动块
                 let translateY = this.getTranslateY(el)
                 translateY += ( e.pos.y / 35)
-
-                Math.abs(translateY - 3)
-
-                if (e.end) {
+                if (e.end) { //如果手指离开屏幕 设置当前滑动块的整数的Y轴偏移
                     translateY = Math.round(translateY)
                     index = Math.abs(translateY - 3)
                 }
 
-                this.vo.domStyle[type] = `translate3d(0px, ${translateY}rem, 0px)`
-
-                if (translateY > 3 && e.end) {
+                this.vo.domStyle[type] = `translate3d(0px, ${translateY}rem, 0px)`//设置当前滑动块的Y轴偏移
+                if (translateY > 3 && e.end) {//如果手指离开屏幕并且滑过了第一个选项
                     this.vo.domStyle[type] = `translate3d(0px,3rem, 0px)`
                     index = 0
                 }
 
-                let min = -(this.vo[type + "Array"].length - 4)
-                if (e.end && min > translateY) {
+                let min = -(this.vo.data[type].length - 4)//最后一个选项的Y轴偏移
+
+                if (e.end && min > translateY) {//如果手指离开屏幕并且滑过了最后一个选项
                     this.vo.domStyle[type] = `translate3d(0px, ${min}rem, 0px)`
-                    index = this.vo[type + "Array"].length - 1
+                    index = this.vo.data[type].length - 1
                 }
-                if (e.end && index >= 0 && index < this.vo[type + "Array"].length) {
-                    this.po[type] = this.vo[type + "Array"][parseInt(index)]
-                    if (type != "day") {
-                        this.getDayArray()
+                if (e.end && this.po.itemIndexs[type] != index) {//如果手指离开屏幕并且选中项发生了改变
+                    this.po.itemIndexs[type] = index
+                    this.$emit("change", type, this.vo.data[type][index], index)
+                    if (this.changeAfterToTop) {
+                        this.afterOptionToTop(type)
                     }
                 }
             },
 
+            /*
+             * 当前选择项改变后，当前列后面的所用列全部滚动到第一个选项
+             * */
+            afterOptionToTop(type){
+                let change = false
+                for (let key in this.vo.data) {
+                    if (change) {
+                        this.vo.domStyle[key] = `translate3d(0px,3rem, 0px)`
+                        if (this.changeEventAll) {
+                            this.$emit("change", key, this.vo.data[key][0] || '')
+                        }
+                    }
+                    if (key == type) {
+                        change = true
+                    }
+                }
+            },
+
+            /*
+             * 获取当前元素的Y轴偏移量（兼容处理）
+             * */
             getTranslateY(el){
                 let css = el.style['transform'] || el.style['-webkit-transform'] || el.style['-ms-transform'] || el.style["-moz-transform"] || el.style["-o-transform"]
                 return parseFloat(css.replace("translate3d(0px,", '').replace("rem, 0px)", ''))
             },
 
-            getDayArray() {//获取天数
-                let dayLength = 0;
-                switch (parseInt(this.po.month, 10)) {
-                    case 1:
-                    case 3:
-                    case 5:
-                    case 7:
-                    case 8:
-                    case 10:
-                    case 12:
-                        dayLength = 31
-                        break
-                    case 2:
-                        if (this.po.year % 100 == 0 && this.po.year % 400 == 0) {
-                            dayLength = 29
-                        } else if (this.po.year % 4 == 0) {
-                            dayLength = 29
-                        } else {
-                            dayLength = 28
+            /*
+             * 获取当前元素的X轴偏移量（兼容处理）
+             * */
+            getTranslateX(){
+                let el = this.$refs.body
+                let css = el.style['transform'] || el.style['-webkit-transform'] || el.style['-ms-transform'] || el.style["-moz-transform"] || el.style["-o-transform"]
+                return parseFloat(css.replace("translate3d(", '').replace("rem,0px, 0px)", ''))
+
+            },
+
+
+            /*
+             * 选中指定的数据
+             * */
+            selectItem(indexs){
+                this.$nextTick(()=> {
+                            let isNumber = indexs.every(item =>typeof item == "number")
+                            let i = 0;
+                            if (isNumber) {
+                                for (let key in this.vo.data) {
+                                    if (indexs[i] !== undefined && indexs[i] < this.vo.data[key].length) {
+                                        this.scrollToItem(key, indexs[i])
+                                    }
+                                    i++
+                                }
+                            } else {
+                                let j = 0;
+                                for (let key in this.vo.data) {
+                                    j = 0;
+                                    for (let item of this.vo.data[key]) {
+                                        if (JSON.stringify(item) == JSON.stringify(indexs[i])) {
+                                            this.scrollToItem(key, j)
+                                            break
+                                        }
+                                        j++
+                                    }
+                                    i++
+                                }
+                            }
                         }
-                        break
-                    default:
-                        dayLength = 30
-                        break
-                }
-                let tempArr = []
-                for (let i = 1; i <= dayLength; i++) {
-                    tempArr.push(this.padLeft(i))
-                }
-                this.vo.dayArray = tempArr;
-
-
-                let translateY = this.getTranslateY(this.$refs.day)
-                let min = -(tempArr.length - 4)
-                if (min > translateY) {
-                    this.vo.domStyle.day = `translate3d(0px, ${min}rem, 0px)`
-                    this.po.day = this.vo.dayArray[this.vo.dayArray.length - 1]
-                }
+                )
             },
 
-            initPanelDate() { //初始化数据
-                for (let i = 1970; i <= new Date().getFullYear(); i++) {
-                    this.vo.yearArray.push(i)
-                }
-                for (let i = 1; i <= 12; i++) {
-                    this.vo.monthArray.push(this.padLeft(i))
-                }
-                for (let i = 1; i <= 30; i++) {
-                    this.vo.dayArray.push(this.padLeft(i))
-                }
-
-                for (let i = 0; i <= 23; i++) {
-                    this.vo.hoursArray.push(this.padLeft(i))
-                }
-
-                for (let i = 0; i <= 59; i++) {
-                    this.vo.minutesArray.push(this.padLeft(i))
-                }
-
-                for (let i = 0; i <= 59; i++) {
-                    this.vo.secondsArray.push(this.padLeft(i))
-                }
-            },
-            setDateTime(){ //设置时间
-                let date = null
-                if (typeof this.value == 'number') {
-                    date = new Date(this.value)
-                } else if (typeof this.value == 'string') {
-                    date = new Date(Date.parse(this.value.trim().replace(/-/g, "/")))
-                } else if (this.value instanceof Date) {
-                    date = this.value
-                } else {
-                    return console.error("Init DateTime error")
-                }
-
-                this.po.year = date.getFullYear()
-                this.po.month = this.padLeft(date.getMonth() + 1)
-                this.getDayArray()
-                this.po.day = this.padLeft(date.getDate())
-                this.po.hours = this.padLeft(date.getHours())
-                this.po.minutes = this.padLeft(date.getMinutes())
-                this.po.seconds = this.padLeft(date.getSeconds())
-                this.syncTranslateY()
+            scrollToItem(key, value){
+                this.vo.domStyle[key] = `translate3d(0px, ${(3 - value)}rem, 0px)`
+                this.$set(this.po.itemIndexs, key, value)
             },
 
-            syncTranslateY(){  //滚动到指定的数据
-                for (let key in this.po) {
-                    for (let i = 0; i < this.vo[key + "Array"].length; i++) {
-                        if (parseInt(this.vo[key + "Array"][i]) == parseInt(this.po[key])) {
-                            this.vo.domStyle[key] = `translate3d(0px, ${(3 - i)}rem, 0px)`
-                            break
-                        }
-                    }
-                }
-            },
             padLeft(value, length = 2, char = '0'){//大爷的三星S5在babel转码后的padStart的运行中报错
                 value = value + '';
                 if (value.length < length) {
@@ -510,17 +485,71 @@
                 }
                 return value
             },
-            submit(){
-                this.$emit("input", this.datetime)
+
+            /*
+             * 初始化面板数据
+             * */
+            initBlockPostion(){
+                for (var type in this.vo.data) {
+                    if (!this.vo.domStyle[type]) {
+                        this.$set(this.vo.domStyle, type, `translate3d(0px,3rem, 0px)`)
+                        this.$set(this.po.itemIndexs, type, 0)
+                    }
+                }
+            },
+
+            /*
+             * 点击确定按钮
+             * */
+            submit(){//点击确定按钮
+                let map = {}, value = null
+                for (let k in this.vo.data) {
+                    map[k] = this.vo.data[k][this.po.itemIndexs[k]]
+                    if (map[k]) {//防止无数据
+                        value = map[k][this.valueField]
+                        if (!value && value !== 0) {
+                            value = map[k]
+                        }
+                    }
+                }
+                this.$emit("done", value, map)
                 this.hidePanel()
+            },
+
+            init(){
+                this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
+                this.vo.data = this.data
+                this.$refs.body.style.width = `${this.tabLayout.length * 10}rem`
+                this.initBlockPostion()
+                if (this.selectIndexs && this.selectIndexs.length) {
+                    this.selectItem(this.selectIndexs)
+                }
             }
+
         },
         mounted: function () {
-            this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
-            this.initPanelDate()
-            this.setDateTime()
+            alert(window.document.documentElement.clientHeight|| window.body.clientHeight)
+            this.init()
+        },
+        watch: {
+            data: {
+                handler: function (val) {
+                    this.vo.data = val
+                    this.initBlockPostion()
+                },
+                deep: true
+            },
+            selectIndexs: {
+                handler: function (val, old) {
+                    let isChange = !old.every((item, index) => {
+                        return item == val[index]
+                    })
+                    if (val.length != old.length || isChange) {
+                        this.selectItem(val)
+                    }
+                },
+                deep: true
+            }
         }
     }
-
-
 </script>
