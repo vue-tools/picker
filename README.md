@@ -1,7 +1,7 @@
 # picker
 移动端多选控件
 
-#使用
+# Use
 ```shell
 $ npm install vt-picker -s
 ```
@@ -13,7 +13,7 @@ $ npm install vt-picker -s
 ```
  
  
- # API
+ # Api
  ### Props 
 *   `valueField` String类型，每一项的值字段，默认值`id`
 *   `textField` String类型，每一项的文本字段，默认值`text`
