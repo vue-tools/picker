@@ -227,7 +227,7 @@
 </template>
 <script>
     import Vue from 'vue'
-    import moveDirective from './directive'
+    import moveDirective from './directive/move'
     Vue.directive("move", moveDirective)
     export default {
         data: function () {
@@ -528,7 +528,7 @@
 
         },
         mounted: function () {
-            alert(window.document.documentElement.clientHeight|| window.body.clientHeight)
+          //  alert(window.document.documentElement.clientHeight|| window.body.clientHeight)
             this.init()
         },
         watch: {
