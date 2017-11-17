@@ -24,7 +24,6 @@
         bottom: 0;
         z-index: 100;
         opacity: 1;
-
         background: #ffffff;
     }
 

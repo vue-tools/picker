@@ -3,7 +3,7 @@
 
 # Use
 ```shell
-$ npm install vt-picker -s
+$ npm install vt-picker --save
 ```
 
 ```shell
